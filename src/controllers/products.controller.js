@@ -6,7 +6,7 @@ import { uploadFileOnCloudinary,deleteImageFromCloudinary,updateImageOnCloudinar
 
 const createProduct = async (req, res) => {
   try {
-    const { name, price, category, description } = req.body;
+    const { name, costPrice,salesPrice, category, description, stockQuantity,barcode} = req.body;
 
    
     const imageLocalPath = req.files?.image?.[0]?.path;
@@ -18,14 +18,17 @@ const createProduct = async (req, res) => {
     }
     const product = new Product({
       name,
-      price,
+      costPrice,
+      salesPrice,
       category,
       description,
       business:business._id,
       image: {
         url: imageUrl.secure_url,
         id: imageUrl.public_id
-      }
+      },
+      stockQuantity,
+      barcode
     });
 
     const savedProduct = await product.save();
@@ -63,7 +66,7 @@ const getProducts = async (req, res) => {
     }
 
     const totalProducts = await Product.countDocuments(filter);
-    const products = await Product.find(filter).skip(skip).limit(limit);
+    const products = await Product.find(filter).skip(skip).limit(limit).populate("category","name");
 
     if (products.length === 0) {
       return res.status(404).json({ message: 'No products found.' });
@@ -90,7 +93,7 @@ const getProductsById=async(req,res)=>{
     const productId=req.params.productId;
     
     const business= await BusinessInformation.findOne({owner:req.user._id});
-    const getProductDetails= await Product.findOne({_id:productId,business:business._id});
+    const getProductDetails= await Product.findOne({_id:productId,business:business._id}).populate("category","name");
     
     if(!getProductDetails){
       return res.status(404).json({
@@ -114,11 +117,55 @@ const getProductsById=async(req,res)=>{
 }  
 
 
+// In your product controller
+const getProductByBarCode = async (req, res) => {
+  try {
+    let { barcode } = req.params;
+
+    // Trim and sanitize
+    barcode = barcode.trim().replace(/[\n\r]+/g, "");
+    
+    const business = await BusinessInformation.findOne({ owner: req.user._id });
+    if (!business) {
+      return res.status(404).json({ 
+        message: 'Business not found',
+        success: false
+      });
+    }
+
+    const product = await Product.findOne({ 
+      barcode,
+      business: business._id 
+    }).populate("category", "name");
+
+    if (!product) {
+      return res.status(404).json({ 
+        message: "Product not found",
+        success: false
+      });
+    }
+
+    return res.status(200).json({
+      message: "Product retrieved successfully",
+      product,
+      success: true
+    });
+  } catch (error) {
+    console.log(`Error in fetching Products Details: ${error}`);
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+      success: false
+    });
+  }
+};
+
+
 const updateProductById = async (req, res) => {
   try {
     const productId = req.params.productId;
    
-    const { name, price, category, description, availability } = req.body;
+    const { name, costPrice, salesPrice,category, description, availability, barcode} = req.body;
 
     const localImagePath = req?.files?.image?.[0]?.path || null;
 
@@ -147,9 +194,11 @@ const updateProductById = async (req, res) => {
 
    
     existingProduct.name = name || existingProduct.name;
-    existingProduct.price = price || existingProduct.price;
+    existingProduct.costPrice= costPrice || existingProduct.costPrice;
+    existingProduct.salesPrice= salesPrice || existingProduct.salesPrice;
     existingProduct.category = category || existingProduct.category;
     existingProduct.description = description || existingProduct.description;
+    existingProduct.barcode=barcode||existingProduct.barcode;
     existingProduct.availability = availability !== undefined ? availability : existingProduct.availability;
 
     await existingProduct.save();
@@ -250,5 +299,6 @@ export {
     getProductsById,
     updateProductById,
     deleteProductById,
-    searchProduct
+    searchProduct,
+    getProductByBarCode
 }  
