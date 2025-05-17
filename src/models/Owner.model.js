@@ -28,7 +28,22 @@ const OwnerSchema = new mongoose.Schema({
     isverified:{
         type:Boolean,
         default:false,
-    }
+    },
+    salesPassword: {
+        type: String,
+        select: false
+      },
+      salesFailedAttempts: {
+        type: Number,
+        default: 0
+      },
+      isSalesBlocked: {
+        type: Boolean,
+        default: false
+      },
+      salesBlockedAt: {
+        type: Date
+      }
 }, { timestamps: true }); 
 
 const Owner = mongoose.model("Owner", OwnerSchema);

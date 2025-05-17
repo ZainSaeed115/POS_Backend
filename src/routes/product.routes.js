@@ -5,7 +5,8 @@ import {
     getProductsById,
     updateProductById,
     deleteProductById,
-    searchProduct
+    searchProduct,
+    getProductByBarCode
 } from "../controllers/products.controller.js";
 import { upload } from "../middleware/multer.js";
 import {verifyJwt} from "../middleware/verifyToken.js"
@@ -20,6 +21,7 @@ router.post("/create",verifyJwt,upload.fields([{
 router.get("/get",verifyJwt,getProducts);
 router.get('/search',searchProduct)
 router.get("/:productId",verifyJwt,getProductsById);
+router.get('/barcode/:barcode', verifyJwt,getProductByBarCode);
 router.put("/update/:productId",verifyJwt,upload.fields([{
     name:"image"
 }]),validateBody(updateProductSchema),updateProductById);

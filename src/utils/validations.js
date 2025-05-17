@@ -11,9 +11,22 @@ export const createProductSchema=joi.object({
  name:joi.string().trim().required().messages({
   'string.empty':'Product name is required'
  }),
- price:joi.number().min(0).required().messages({
+ costPrice:joi.number().min(0).required().messages({
   'number.base':'Price is required and must be a number',
   'number.min':'Price cannot be a negative',
+ }),
+ salesPrice:joi.number().min(0).required().messages({
+  'number.base':'Price is required and must be a number',
+  'number.min':'Price cannot be a negative',
+ }),
+ stockQuantity:joi.number().min(0).required().messages(
+ {
+  'number.base':'Price is required and must be a number',
+  'number.min':'Price cannot be a negative',
+ }
+ ),
+ barcode:joi.string().trim().required().messages({
+  'string.empty':'barcode is required'
  }),
  category:joi.string().custom(objectIdValidator).required().messages({
   'any.invalid':'Invalid category Id',
@@ -25,8 +38,10 @@ export const createProductSchema=joi.object({
 
 export const updateProductSchema=joi.object({
   name: joi.string().trim().optional(),
-  price: joi.number().min(0).optional(),
+  costPrice: joi.number().min(0).optional(),
+  salesPrice: joi.number().min(0).optional(),
   category: joi.string().custom(objectIdValidator).optional(),
   description: joi.string().optional().allow('').trim(),
   availability: joi.boolean().optional(),
+   barcode:joi.string().trim().optional()
 })

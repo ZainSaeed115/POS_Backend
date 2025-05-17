@@ -12,7 +12,12 @@ const productSchema = new mongoose.Schema({
     required: true, 
     trim: true
   },
-  price: {
+  costPrice: {
+    type: Number,
+    required: true, 
+    min: [0, 'Price must be a positive number'],
+  },
+  salesPrice:{
     type: Number,
     required: true, 
     min: [0, 'Price must be a positive number'],
@@ -48,7 +53,14 @@ const productSchema = new mongoose.Schema({
   stockQuantity: {
     type: Number,
     default: 0
-  }
+  },
+  barcode: {
+    type: String,
+    unique: true,
+    required:true,
+    trim: true,
+    sparse: true 
+  },
 }, {
   timestamps: true
 });
