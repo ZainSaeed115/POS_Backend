@@ -11,15 +11,12 @@ export const generateTokens=(ownerId,res)=>{
       }
     );
 
-    res.cookie(
-        "token",token,
-        {
-            httpOnly:true,
-            secure:process.env.NODE_ENV=="Production",
-            samesite:"strict",
-            maxAge:2*24*60*60*1000
-        }
-    )
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // lowercase "production"
+      sameSite: "Strict", // Corrected casing
+      maxAge: 2 * 24 * 60 * 60 * 1000,
+    });
   return token;   
   } catch (error) {
     console.log(`Error in genrating tokens:${error}`);
