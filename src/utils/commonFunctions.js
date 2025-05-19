@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken"
-
+import "dotenv/config.js"
+console.log("")
 export const generateTokens=(ownerId,res)=>{
   try {
       const token=jwt.sign({

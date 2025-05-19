@@ -17,8 +17,18 @@ const port = process.env.PORT || 5000;
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: ['http://localhost:5173','https://cloud-based-pos.vercel.app'],
-  credentials: true
+  origin: [
+    'http://localhost:5173',
+    'https://cloud-based-pos.vercel.app'
+  ],
+  credentials: true,
+  exposedHeaders: ['set-cookie'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept'
+  ]
 }));
 
 // Routes
