@@ -14,8 +14,8 @@ export const generateTokens=(ownerId,res)=>{
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // lowercase "production"
-       sameSite: "none", // Corrected casing
+      secure: true, 
+      sameSite: "none",
       maxAge: 2 * 24 * 60 * 60 * 1000,
     });
   return token;   
