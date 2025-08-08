@@ -1,6 +1,7 @@
 import {v2 as cloudinary} from "cloudinary"
-import { log } from "console";
+import { error, log } from "console";
 import fs from "fs"
+import { Readable } from "stream";
 
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
@@ -9,22 +10,45 @@ cloudinary.config({
 });
 
 
-const uploadFileOnCloudinary=async(localFilePath)=>{
-try {
-    if(!localFilePath) return null;
-    const response= await cloudinary.uploader.upload(localFilePath,{
-        resource_type:'auto',
-        folder:"POS_Images"
-    });
-    fs.unlinkSync(localFilePath);
-    return response;
-} catch (error) {
-    fs.unlinkSync(localFilePath) 
-    console.log(`Error in uploading file on cloudinary:${error}`);
-    return null
-}
+const bufferToStream=(buffer)=>{
+ const readable= new Readable();
+ readable.push(buffer);
+ readable.push(null);
+ return readable;
 }
 
+
+
+
+const uploadFileOnCloudinary=async(fileBuffer,originalname)=>{
+try {
+  if(!fileBuffer) throw new Error("No file buffer provided");
+
+  return new Promise((resolve,reject)=>{
+   const uploadStream=cloudinary.uploader.upload_stream(
+    {
+        folder:"POS_Images",
+        resource_type:"image",
+        public_id:`img-${Date.now()}-${Math.round(Math.random()*1E9)}`,
+        format:"webp",
+       
+    },
+  (error,result)=>{
+    if(error){
+        reject(error);
+    }
+    else{
+        resolve(result)
+    }
+  }
+   );
+   bufferToStream(fileBuffer).pipe(uploadStream);
+  });
+} catch (error) {
+  console.error('Cloudinary upload error:', error);
+    throw error;
+}
+}
 const deleteImageFromCloudinary=async(productId)=>{
 try {
     if(!productId) return null;

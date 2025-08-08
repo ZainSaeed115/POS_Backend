@@ -3,26 +3,43 @@ import BusinessInformation from "../models/businessInformation.model.js";
 import Owner from "../models/Owner.model.js";
 import Product from "../models/products.model.js";
 import { uploadFileOnCloudinary,deleteImageFromCloudinary,updateImageOnCloudinary } from "../utils/cloudinary.js";
+import { error } from "console";
 
 const createProduct = async (req, res) => {
-  try {
-    const { name, costPrice,salesPrice, category, description, stockQuantity,barcode} = req.body;
+    console.log("Request body:", req.body);
+    console.log("Request file:", req.file);
+    console.log("Request files:", req.files);
 
-   
-    const imageLocalPath = req.files?.image?.[0]?.path;
-    const imageUrl = await uploadFileOnCloudinary(imageLocalPath);
+  try {
+    const { name, costPrice, salesPrice, category, description, stockQuantity, barcode } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({ 
+        success:false,
+        message: 'Image file is required' ,
+        error:"NO_FILE_PROVIDED"
+      });
+    }
+
     
-    const business= await BusinessInformation.findOne({owner:req.user._id});
+    const imageUrl = await uploadFileOnCloudinary(req.file.buffer,req.file.originalname);
+    
+    if (!imageUrl) {
+      return res.status(400).json({ message: 'Failed to upload image to Cloudinary' });
+    }
+
+    const business = await BusinessInformation.findOne({ owner: req.user._id });
     if (!business) {
       return res.status(404).json({ message: 'Business not found' });
     }
+
     const product = new Product({
       name,
       costPrice,
       salesPrice,
       category,
       description,
-      business:business._id,
+      business: business._id,
       image: {
         url: imageUrl.secure_url,
         id: imageUrl.public_id
@@ -42,7 +59,6 @@ const createProduct = async (req, res) => {
     res.status(500).json({ message: 'Server error. Unable to create product.' });
   }
 };
-
 
 const getProducts = async (req, res) => {
   try {
