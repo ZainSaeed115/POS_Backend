@@ -15,9 +15,8 @@ import { createProductSchema ,updateProductSchema} from "../utils/validations.js
 
 const router=express.Router();
 
-router.post("/create",verifyJwt,upload.fields([{
-   name:"image"
-}]),validateBody(createProductSchema),createProduct);
+router.post("/create",verifyJwt,upload.single("image")
+,createProduct);
 router.get("/get",verifyJwt,getProducts);
 router.get('/search',searchProduct)
 router.get("/:productId",verifyJwt,getProductsById);
