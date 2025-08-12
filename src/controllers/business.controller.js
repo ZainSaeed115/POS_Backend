@@ -3,7 +3,7 @@ import Owner from "../models/Owner.model.js";
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import { generateTokens,generateVerificationToken } from "../utils/commonFunctions.js";
-import {sendVerificationEmail, sendWelcomeEmail} from "../mailer/mail.js"
+import {sendVerificationEmail, sendWelcomeEmail,sendResetPasswordEmail} from "../mailer/mail.js"
 const registerBusinessOwner=async(req,res)=>{
  try {
     const {name, email, phone,password}=req.body;
@@ -251,6 +251,108 @@ const getBusinessInformation = async (req, res) => {
     }
 }
 
+const forgetPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    
+    const normalizedEmail = email.toLowerCase().trim();
+    
+   
+    const owner = await Owner.findOne({ email: normalizedEmail });
+    
+    if (owner) {
+    
+      const resetToken = generateVerificationToken();
+      owner.verificationToken = resetToken;
+      owner.verificationTokenExpiry = Date.now() + 3600000; 
+      await owner.save();
+      
+     
+      await sendResetPasswordEmail(owner.email, resetToken);
+    }
+    
+   console.log("owner0:",owner)
+    return res.status(200).json({
+      message: "If your email exists in our system, you'll receive a reset link",
+      owner:owner,
+      success: true
+    });
+    
+  } catch (error) {
+    console.error('Error in forgetPassword:', error); 
+    return res.status(500).json({
+      message: "Something went wrong",
+      error:  error.message ,
+      success: false
+    });
+  }
+}
+
+const verifyResetPasswordToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+    
+    
+    const owner = await Owner.findOne({
+      verificationToken: token,
+      verificationTokenExpiry:{$gt: Date.now() }
+    });
+   
+    if (!owner) {
+      return res.status(400).json({
+        message: "Invalid or expired token",
+        success: false
+      });
+    }
+
+    return res.status(200).json({
+      message: "Token verified successfully",
+      success: true,
+      ownerId: owner._id 
+    });
+    
+  } catch (error) {
+    console.error('Error in verifyResetPasswordToken:', error);
+    return res.status(500).json({
+      message: "Something went wrong",
+      success: false
+    });
+  }
+}
+
+const resetPassword=async(req,res)=>{
+  try {
+    const {password,userId}=req.body;
+
+    const hashedPassword= await bcrypt.hash(password,10);
+
+    const owner = await Owner.findById(userId);
+    if(!owner){
+        return res.status(404).json({
+            message:"User not exists",
+            success:false
+        })
+    }
+
+    owner.password=hashedPassword;
+    owner.verificationToken=undefined;
+    owner.verificationTokenExpiry=undefined;
+    await owner.save();
+
+    return res.status(200).json({
+        message:"Password changed successfully",
+        success:true
+    })
+
+  } catch (error) {
+     console.error('Error in verifyResetPasswordToken:', error);
+    return res.status(500).json({
+      message: "Something went wrong",
+      success: false
+    });
+  }
+}
 export { 
      registerBusinessInformation,
      getBusinessInformation,
@@ -258,5 +360,8 @@ export {
      verifyEmail,
      checkAuth,
      Login,
-     logout
+     logout,
+     forgetPassword,
+     verifyResetPasswordToken,
+     resetPassword
      };

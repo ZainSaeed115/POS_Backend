@@ -136,7 +136,7 @@ export const RESET_PASSWORD_EMAIL_TEMPLATE = `
         <td align="center">
           <table width="100%" max-width="600" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); padding: 40px;">
             <tr>
-              <td align="center" style="font-size: 24px; font-weight: bold; color: #dc2626; padding-bottom: 20px;">
+              <td align="center" style="font-size: 26px; font-weight: bold; color: #047857; padding-bottom: 20px;">
                 Reset Your Password
               </td>
             </tr>
@@ -152,7 +152,7 @@ export const RESET_PASSWORD_EMAIL_TEMPLATE = `
             </tr>
             <tr>
               <td align="center" style="padding: 30px 0;">
-                <div style="background-color: #fef2f2; color: #b91c1c; padding: 15px 25px; font-size: 20px; font-weight: bold; letter-spacing: 4px; border-radius: 8px; border: 1px solid #fecaca; display: inline-block;">
+                <div style="background-color: #ecfdf5; color: #047857; padding: 15px 25px; font-size: 20px; font-weight: bold; letter-spacing: 4px; border-radius: 8px; border: 1px solid #a7f3d0; display: inline-block;">
                   {{resetToken}}
                 </div>
               </td>
@@ -160,6 +160,12 @@ export const RESET_PASSWORD_EMAIL_TEMPLATE = `
             <tr>
               <td style="font-size: 14px; color: #6b7280;">
                 Paste this code in the app to reset your password. This code will expire in 1 hour.
+              </td>
+            </tr>
+            <tr>
+              <td style="font-size: 16px; color: #374151;">
+                Cheers,<br />
+                The POS Team
               </td>
             </tr>
             <tr>

@@ -25,6 +25,7 @@ const OwnerSchema = new mongoose.Schema({
         match: [/^\d{10,15}$/, "Phone number should be 10-15 digits"],
     },
     verificationToken:String,
+    verificationTokenExpiry:Date,
     isverified:{
         type:Boolean,
         default:false,
