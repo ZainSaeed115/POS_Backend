@@ -6,26 +6,24 @@ import { uploadFileOnCloudinary,deleteImageFromCloudinary,updateImageOnCloudinar
 import { error } from "console";
 
 const createProduct = async (req, res) => {
-    console.log("Request body:", req.body);
-    console.log("Request file:", req.file);
-    console.log("Request files:", req.files);
+  console.log("Request body:", req.body);
+  console.log("Request file:", req.file);
+  console.log("Request files:", req.files);
 
   try {
     const { name, costPrice, salesPrice, category, description, stockQuantity, barcode } = req.body;
 
-    if (!req.file) {
-      return res.status(400).json({ 
-        success:false,
-        message: 'Image file is required' ,
-        error:"NO_FILE_PROVIDED"
-      });
-    }
-
-    
-    const imageUrl = await uploadFileOnCloudinary(req.file.buffer,req.file.originalname);
-    
-    if (!imageUrl) {
-      return res.status(400).json({ message: 'Failed to upload image to Cloudinary' });
+    // Image optional handling
+    let imageData = { url: "", id: "" };
+    if (req.file) {
+      const imageUrl = await uploadFileOnCloudinary(req.file.buffer, req.file.originalname);
+      if (!imageUrl) {
+        return res.status(400).json({ message: 'Failed to upload image to Cloudinary' });
+      }
+      imageData = {
+        url: imageUrl.secure_url || "",
+        id: imageUrl.public_id || ""
+      };
     }
 
     const business = await BusinessInformation.findOne({ owner: req.user._id });
@@ -40,10 +38,7 @@ const createProduct = async (req, res) => {
       category,
       description,
       business: business._id,
-      image: {
-        url: imageUrl.secure_url,
-        id: imageUrl.public_id
-      },
+      image: imageData, // Optional image
       stockQuantity,
       barcode
     });
@@ -60,19 +55,21 @@ const createProduct = async (req, res) => {
   }
 };
 
+
+
 const getProducts = async (req, res) => {
   try {
     let page = Number(req.query.page) || 1;
     let limit = Number(req.query.limit) || 6;
     let skip = (page - 1) * limit;
     let searchQuery = req.query.search || '';
+    let categoryFilter = req.query.category || '';
 
-    
     const business = await BusinessInformation.findOne({ owner: req.user._id });
     if (!business) {
       return res.status(404).json({ message: 'Business not found.' });
     }
-    console.log("business:",business._id)
+
     let filter = {
       business: business._id 
     };
@@ -81,8 +78,15 @@ const getProducts = async (req, res) => {
       filter.name = { $regex: searchQuery, $options: 'i' };
     }
 
+    if (categoryFilter) {
+      filter.category = categoryFilter;
+    }
+
     const totalProducts = await Product.countDocuments(filter);
-    const products = await Product.find(filter).skip(skip).limit(limit).populate("category","name");
+    const products = await Product.find(filter)
+      .skip(skip)
+      .limit(limit)
+      .populate("category", "name");
 
     if (products.length === 0) {
       return res.status(404).json({ message: 'No products found.' });
@@ -101,7 +105,6 @@ const getProducts = async (req, res) => {
     res.status(500).json({ message: 'Server error. Unable to fetch products.' });
   }
 };
-
 
 
 const getProductsById=async(req,res)=>{
