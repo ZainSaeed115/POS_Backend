@@ -7,8 +7,9 @@ import Product from "../models/products.model.js";
 import moment from "moment"
 
 const createOrder = async (req, res) => {
+  console.log("Received order request:",req.body);
   try {
-    const { items, totalAmount, paymentMethod } = req.body;
+    const { items, totalAmount,uniPrice ,paymentMethod } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ message: 'No order items found.', success: false });
@@ -20,6 +21,7 @@ const createOrder = async (req, res) => {
     }
 
     const enrichedItems = await Promise.all(items.map(async (item) => {
+      console.log(item.quantity)
       if (!item.product || !item.quantity || item.quantity <= 0) {
         throw new Error('Each item must have a valid product and quantity > 0.');
       }
@@ -28,7 +30,7 @@ const createOrder = async (req, res) => {
       if (!product) {
         throw new Error(`Product not found with ID: ${item.product}`);
       }
-
+      const finalPrice = item.unitPrice && item.unitPrice > 0 ? item.unitPrice : product.salesPrice;
       // Check stock availability before proceeding
       if (product.stockQuantity < item.quantity) {
         throw new Error(`Insufficient stock for product: ${product.name}. Available: ${product.stockQuantity}, Requested: ${item.quantity}`);
@@ -37,8 +39,10 @@ const createOrder = async (req, res) => {
       return {
         product: product._id,
         name: product.name,
-        price: product.salesPrice,
-        quantity: item.quantity
+        price: finalPrice,               
+        originalPrice: product.salesPrice, 
+        quantity: item.quantity,
+        isOffered: item.isOffered || false
       };
     }));
 
@@ -77,9 +81,10 @@ const createOrder = async (req, res) => {
       }));
 
       // Update Daily Sales Tracking
+      // Update Daily Sales Tracking
       const today = new Date().toISOString().split('T')[0];
       let dailySales = await DailySales.findOne({ business: business._id, date: today }).session(session);
-      
+
       if (!dailySales) {
         dailySales = new DailySales({
           business: business._id,
@@ -92,18 +97,30 @@ const createOrder = async (req, res) => {
 
       dailySales.totalOrders += 1;
       dailySales.totalSales += totalAmount;
-      
+
+      // In createOrder function, replace the enrichedItems.forEach section with:
+
       enrichedItems.forEach((item) => {
-        const existing = dailySales.ProductBreakdown.find(p => p.product.equals(item.product));
+        const existing = dailySales.ProductBreakdown.find(p =>
+          p.product.equals(item.product)
+        );
+
+        const itemRevenue = item.price * item.quantity;          
+        const originalRevenue = item.originalPrice * item.quantity; 
+
         if (existing) {
           existing.orders += item.quantity;
-          existing.revenue += item.price * item.quantity;
+          existing.revenue += itemRevenue;            
+          existing.originalRevenue += originalRevenue;
+          existing.isOffered = item.isOffered;        
         } else {
           dailySales.ProductBreakdown.push({
             product: item.product,
             name: item.name,
             orders: item.quantity,
-            revenue: item.price * item.quantity,
+            revenue: itemRevenue,         
+            originalRevenue: originalRevenue,
+            isOffered: item.isOffered
           });
         }
       });
@@ -143,26 +160,26 @@ const getWeeklySales = async (req, res) => {
   try {
     console.log("Starting to fetch weekly sales");
     const business = await BusinessInformation.findOne({ owner: req.user._id });
-    
+
     if (!business) {
       return res.status(404).json({
         message: "Business Not Found",
         success: false
       });
     }
-    
+
     const selectedWeek = req.query.week; // Get the week parameter from the query
     const startOfMonth = moment().startOf('month');
     const endOfMonth = moment().endOf('month');
-    
+
     const getAllSales = await DailySales.find({
       business: business._id,
       date: {
         $gte: startOfMonth.toDate(),
         $lte: endOfMonth.toDate()
       }
-    }).sort({ date: 1});
-    
+    }).sort({ date: 1 });
+
     console.log("Sales fetched:", getAllSales.length);
 
     const weeks = {
@@ -225,17 +242,17 @@ const getWeeklySales = async (req, res) => {
 const getAllWeeksSales = async (req, res) => {
   try {
     const business = await BusinessInformation.findOne({ owner: req.user._id });
-    
+
     if (!business) {
       return res.status(404).json({
         message: "Business Not Found",
         success: false
       });
     }
-    
+
     const startOfMonth = moment().startOf('month');
     const endOfMonth = moment().endOf('month');
-    
+
     const allSales = await DailySales.find({
       business: business._id,
       date: {
@@ -255,7 +272,7 @@ const getAllWeeksSales = async (req, res) => {
     allSales.forEach(sale => {
       const dayOfMonth = moment(sale.date).date();
       let weekKey;
-      
+
       if (dayOfMonth <= 7) {
         weekKey = 'week1';
       } else if (dayOfMonth <= 14) {
@@ -277,7 +294,7 @@ const getAllWeeksSales = async (req, res) => {
       sales: weeklyData[`week${weekNum}`].sales,
       totalSales: weeklyData[`week${weekNum}`].totalSales,
       totalTransactions: weeklyData[`week${weekNum}`].totalTransactions,
-      averageSaleValue: weeklyData[`week${weekNum}`].totalTransactions > 0 
+      averageSaleValue: weeklyData[`week${weekNum}`].totalTransactions > 0
         ? weeklyData[`week${weekNum}`].totalSales / weeklyData[`week${weekNum}`].totalTransactions
         : 0
     }));
@@ -298,9 +315,7 @@ const getAllWeeksSales = async (req, res) => {
   }
 };
 
-// In your sales.controller.js
 
-// Add to sales.controller.js
 const getMonthlySales = async (req, res) => {
   try {
     const business = await BusinessInformation.findOne({ owner: req.user._id });
@@ -343,7 +358,7 @@ const getOrders = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 6;
     const skip = (page - 1) * limit;
-    
+
     const orders = await Order.find()
       .populate("items.product", "name price")
       .sort({ createdAt: -1 })
