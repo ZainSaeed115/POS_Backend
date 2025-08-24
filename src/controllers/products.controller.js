@@ -309,7 +309,42 @@ const searchProduct = async (req, res) => {
   }}
   
   
-  
+const makeOffer = async (req, res) => {
+  try {
+    const {productId}=req.params
+    const {  offerPrice } = req.body;
+
+    if (!productId || offerPrice === undefined) {
+      return res.status(400).json({ accepted: false, message: "Product and offer price required." });
+    }
+
+    const business = await BusinessInformation.findOne({ owner: req.user._id });
+    if (!business) return res.status(404).json({ accepted: false, message: "Business not found." });
+
+    const product = await Product.findOne({ _id: productId, business: business._id });
+    if (!product) return res.status(404).json({ accepted: false, message: "Product not found." });
+
+    const minAcceptable = product.salesPrice * 0.5; // Example: minimum 50% of original price
+    if (offerPrice >= product.salesPrice) {
+      return res.status(200).json({ accepted: false, message: "Offer must be less than listed price." });
+    }
+
+    if (offerPrice < minAcceptable) {
+      return res.status(200).json({ accepted: false, message: `Offer too low. Minimum allowed is Rs ${minAcceptable}` });
+    }
+
+    return res.status(200).json({
+      accepted: true,
+      finalPrice: offerPrice,
+      message: "Offer accepted.",
+      productId: product._id 
+    });
+
+  } catch (error) {
+    console.error("Error in making offer:", error);
+    return res.status(500).json({ accepted: false, message: "Server error." });
+  }
+};  
 
 
 export {
@@ -319,5 +354,6 @@ export {
     updateProductById,
     deleteProductById,
     searchProduct,
-    getProductByBarCode
+    getProductByBarCode,
+    makeOffer
 }  
