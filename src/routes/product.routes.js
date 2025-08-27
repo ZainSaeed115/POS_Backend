@@ -6,7 +6,8 @@ import {
     updateProductById,
     deleteProductById,
     searchProduct,
-    getProductByBarCode
+    getProductByBarCode,
+    makeOffer
 } from "../controllers/products.controller.js";
 import { upload } from "../middleware/multer.js";
 import {verifyJwt} from "../middleware/verifyToken.js"
@@ -25,6 +26,7 @@ router.put("/update/:productId",verifyJwt,upload.fields([{
     name:"image"
 }]),validateBody(updateProductSchema),updateProductById);
 router.delete("/delete/:productId",verifyJwt,deleteProductById);
+router.post("/make-offer/:productId", verifyJwt, makeOffer);
 
 
 export default router;

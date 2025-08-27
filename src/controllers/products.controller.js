@@ -5,57 +5,104 @@ import Product from "../models/products.model.js";
 import { uploadFileOnCloudinary,deleteImageFromCloudinary,updateImageOnCloudinary } from "../utils/cloudinary.js";
 import { error } from "console";
 
-const createProduct = async (req, res) => {
-  console.log("Request body:", req.body);
-  console.log("Request file:", req.file);
-  console.log("Request files:", req.files);
+// const createProduct = async (req, res) => {
+//   console.log("Request body:", req.body);
+//   console.log("Request file:", req.file);
+//   console.log("Request files:", req.files);
 
+//   try {
+//     const { name, costPrice, salesPrice, category, description, stockQuantity, barcode } = req.body;
+
+//     // Image optional handling
+//     let imageData = { url: "", id: "" };
+//     if (req.file) {
+//       const imageUrl = await uploadFileOnCloudinary(req.file.buffer, req.file.originalname);
+//       if (!imageUrl) {
+//         return res.status(400).json({ message: 'Failed to upload image to Cloudinary' });
+//       }
+//       imageData = {
+//         url: imageUrl.secure_url || "",
+//         id: imageUrl.public_id || ""
+//       };
+//     }
+
+//     const business = await BusinessInformation.findOne({ owner: req.user._id });
+//     if (!business) {
+//       return res.status(404).json({ message: 'Business not found' });
+//     }
+
+//     const product = new Product({
+//       name,
+//       costPrice,
+//       salesPrice,
+//       category,
+//       description,
+//       business: business._id,
+//       image: imageData, // Optional image
+//       stockQuantity,
+//       barcode
+//     });
+
+//     const savedProduct = await product.save();
+
+//     res.status(201).json({
+//       message: 'Product created successfully',
+//       product: savedProduct
+//     });
+//   } catch (error) {
+//     console.error('Error creating product:', error);
+//     res.status(500).json({ message: 'Server error. Unable to create product.' });
+//   }
+// };
+
+const createProduct=async(req,res)=>{
   try {
-    const { name, costPrice, salesPrice, category, description, stockQuantity, barcode } = req.body;
+    let {limit,products}=req.body;
 
-    // Image optional handling
-    let imageData = { url: "", id: "" };
-    if (req.file) {
-      const imageUrl = await uploadFileOnCloudinary(req.file.buffer, req.file.originalname);
-      if (!imageUrl) {
-        return res.status(400).json({ message: 'Failed to upload image to Cloudinary' });
-      }
-      imageData = {
-        url: imageUrl.secure_url || "",
-        id: imageUrl.public_id || ""
-      };
+    if(products &&!Array.isArray(products)){
+      products=[products];
     }
 
-    const business = await BusinessInformation.findOne({ owner: req.user._id });
-    if (!business) {
-      return res.status(404).json({ message: 'Business not found' });
+    if(!products || products.length===0){
+      return res.status(400).json({message:"At least one product is required",success:false});
     }
 
-    const product = new Product({
-      name,
-      costPrice,
-      salesPrice,
-      category,
-      description,
+    if(limit && products.length>limit){
+      return res.status(400).json({
+        message:`You can only add up to ${limit} product at once`,
+        success:false
+      })
+    }
+
+    const business= await BusinessInformation.findOne({owner:req.user._id});
+    if(!business){
+       return res.status(404).json({ message: "Business not found",success:false });
+    }
+
+     const productDocs = products.map((p) => ({
+      name: p.name,
+      costPrice: p.costPrice,
+      salesPrice: p.salesPrice,
+      category: p.category||"",
+      description: p.description||"",
       business: business._id,
-      image: imageData, // Optional image
-      stockQuantity,
-      barcode
-    });
+      stockQuantity: p.stockQuantity,
+      barcode: p.barcode
+    }));
 
-    const savedProduct = await product.save();
+      const savedProducts = await Product.insertMany(productDocs);
 
     res.status(201).json({
-      message: 'Product created successfully',
-      product: savedProduct
+      message: `${savedProducts.length} product(s) created successfully`,
+      products: savedProducts,
+      success:true
     });
+
   } catch (error) {
-    console.error('Error creating product:', error);
-    res.status(500).json({ message: 'Server error. Unable to create product.' });
+     console.error("Error creating product(s):", error);
+    res.status(500).json({ message: "Server error. Unable to create product(s).",success:false });
   }
-};
-
-
+}
 
 const getProducts = async (req, res) => {
   try {
