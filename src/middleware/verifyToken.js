@@ -1,4 +1,4 @@
-// middleware/verifyToken.js
+
 import jwt from "jsonwebtoken";
 import Owner from "../models/Owner.model.js";
 
@@ -6,8 +6,7 @@ export const verifyJwt = async (req, res, next) => {
   try {
  
     const token = req.cookies?.token || req.headers?.authorization?.replace("Bearer ", "");
-    console.log('Incoming cookies:', req.cookies);
-    console.log('Incoming headers:', req.headers);
+  
     if (!token) {
       return res.status(401).json({
         message: "Authorization token missing",
