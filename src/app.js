@@ -6,7 +6,7 @@ import ProductRoutes from "./routes/product.routes.js";
 import OrderRoutes from "./routes/order.routes.js";
 import CategoryRoutes from "./routes/category.routes.js";
 import BusinessRoutes from "./routes/business.routes.js";
-
+import SupplierRoutes from "./routes/supplier.routes.js"
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
@@ -37,6 +37,7 @@ app.use("/api/v1/product", ProductRoutes);
 app.use("/api/v1/order", OrderRoutes);
 app.use("/api/v1/category", CategoryRoutes);
 app.use("/api/v1/business", BusinessRoutes);
+app.use("/api/v1/suppliers",SupplierRoutes)
 
 app.get("/", (req, res) => {
   return res.send("Hi! Welcome");
