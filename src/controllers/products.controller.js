@@ -87,7 +87,8 @@ const createProduct = async (req, res) => {
       description: p.description || "",
       business: business._id,
       stockQuantity: p.stockQuantity,
-      barcode: p.barcode
+      barcode: p.barcode,
+      supplier:p.supplier
     }));
 
     const savedProducts = await Product.insertMany(productDocs);
@@ -104,6 +105,56 @@ const createProduct = async (req, res) => {
   }
 }
 
+// const getProducts = async (req, res) => {
+//   try {
+//     let page = Number(req.query.page) || 1;
+//     let limit = Number(req.query.limit) || 6;
+//     let skip = (page - 1) * limit;
+//     let searchQuery = req.query.search || '';
+//     let categoryFilter = req.query.category || '';
+
+//     const business = await BusinessInformation.findOne({ owner: req.user._id });
+//     if (!business) {
+//       return res.status(404).json({ message: 'Business not found.' });
+//     }
+
+//     let filter = {
+//       business: business._id
+//     };
+
+//     if (searchQuery) {
+//       filter.name = { $regex: searchQuery, $options: 'i' };
+//     }
+
+//     if (categoryFilter) {
+//       filter.category = categoryFilter;
+//     }
+
+//     const totalProducts = await Product.countDocuments(filter);
+//     const products = await Product.find(filter)
+//       .skip(skip)
+//       .limit(limit)
+//       .populate("category", "name");
+
+//     if (products.length === 0) {
+//       return res.status(404).json({ message: 'No products found.' });
+//     }
+
+//     res.status(200).json({
+//       message: 'Products retrieved successfully',
+//       currentPage: page,
+//       totalPages: Math.ceil(totalProducts / limit),
+//       totalProducts,
+//       products
+//     });
+
+//   } catch (error) {
+//     console.error('Error fetching products:', error);
+//     res.status(500).json({ message: 'Server error. Unable to fetch products.' });
+//   }
+// };
+
+
 const getProducts = async (req, res) => {
   try {
     let page = Number(req.query.page) || 1;
@@ -111,6 +162,8 @@ const getProducts = async (req, res) => {
     let skip = (page - 1) * limit;
     let searchQuery = req.query.search || '';
     let categoryFilter = req.query.category || '';
+    let supplierFilter = req.query.supplier || '';
+    let stockStatusFilter = req.query.stockStatus || '';
 
     const business = await BusinessInformation.findOne({ owner: req.user._id });
     if (!business) {
@@ -129,11 +182,26 @@ const getProducts = async (req, res) => {
       filter.category = categoryFilter;
     }
 
+    if (supplierFilter) {
+      filter.supplier = supplierFilter;
+    }
+
+    if (stockStatusFilter) {
+      if (stockStatusFilter === 'inStock') {
+        filter.stockQuantity = { $gt: 5 };
+      } else if (stockStatusFilter === 'lowStock') {
+        filter.stockQuantity = { $gt: 0, $lte: 5 };
+      } else if (stockStatusFilter === 'outOfStock') {
+        filter.stockQuantity = { $eq: 0 };
+      }
+    }
+
     const totalProducts = await Product.countDocuments(filter);
     const products = await Product.find(filter)
       .skip(skip)
       .limit(limit)
-      .populate("category", "name");
+      .populate("category", "name")
+      .populate("supplier", "name");
 
     if (products.length === 0) {
       return res.status(404).json({ message: 'No products found.' });
@@ -152,7 +220,6 @@ const getProducts = async (req, res) => {
     res.status(500).json({ message: 'Server error. Unable to fetch products.' });
   }
 };
-
 
 const getProductsById = async (req, res) => {
   try {
@@ -273,7 +340,8 @@ const updateProductById = async (req, res) => {
   try {
     const productId = req.params.productId;
 
-    const { name, costPrice, salesPrice, category, description, availability, barcode } = req.body;
+  
+    const { name, costPrice, salesPrice, category, description, availability, barcode, stockQuantity,supplier } = req.body;
 
     const localImagePath = req?.files?.image?.[0]?.path || null;
 
@@ -291,7 +359,6 @@ const updateProductById = async (req, res) => {
       return res.status(400).json({ message: "Product Not Found", success: false });
     }
 
-
     if (localImagePath) {
       const imageUrl = await updateImageOnCloudinary(localImagePath, existingProduct.image?.id);
       if (imageUrl) {
@@ -300,7 +367,7 @@ const updateProductById = async (req, res) => {
       }
     }
 
-
+  
     existingProduct.name = name || existingProduct.name;
     existingProduct.costPrice = costPrice || existingProduct.costPrice;
     existingProduct.salesPrice = salesPrice || existingProduct.salesPrice;
@@ -308,6 +375,8 @@ const updateProductById = async (req, res) => {
     existingProduct.description = description || existingProduct.description;
     existingProduct.barcode = barcode || existingProduct.barcode;
     existingProduct.availability = availability !== undefined ? availability : existingProduct.availability;
+    existingProduct.stockQuantity = stockQuantity !== undefined ? stockQuantity : existingProduct.stockQuantity; 
+    existingProduct.supplier=supplier!==undefined?supplier:existingProduct.supplier
 
     await existingProduct.save();
 
@@ -437,7 +506,6 @@ const makeOffer = async (req, res) => {
 };
 
 const getProductStatistic = async (req, res) => {
-  console.log("I")
   try {
     const business = await BusinessInformation.findOne({ owner: req.user._id });
     if (!business) {
@@ -447,7 +515,7 @@ const getProductStatistic = async (req, res) => {
       });
     }
 
-    // Saare products ka stats nikalne ke liye aggregation
+
     const stats = await Product.aggregate([
       { $match: { business: business._id } },
       {
@@ -457,6 +525,23 @@ const getProductStatistic = async (req, res) => {
           totalStock: { $sum: "$stockQuantity" },
           totalInventoryValue: {
             $sum: { $multiply: ["$salesPrice", "$stockQuantity"] }
+          },
+          lowStock: {
+            $sum: {
+              $cond: [
+                { $and: [
+                  { $gt: ["$stockQuantity", 0] },
+                  { $lte: ["$stockQuantity", 5] }
+                ]},
+                1,
+                0
+              ]
+            }
+          },
+          outOfStock: {
+            $sum: {
+              $cond: [{ $eq: ["$stockQuantity", 0] }, 1, 0]
+            }
           }
         }
       }
@@ -465,7 +550,13 @@ const getProductStatistic = async (req, res) => {
     return res.status(200).json({
       message: "All product stats retrieved successfully",
       success: true,
-      stats: stats[0] || { totalProducts: 0, totalStock: 0, totalInventoryValue: 0 }
+      stats: stats[0] || { 
+        totalProducts: 0, 
+        totalStock: 0, 
+        totalInventoryValue: 0,
+        lowStock: 0,
+        outOfStock: 0 
+      }
     });
 
   } catch (error) {

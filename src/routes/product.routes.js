@@ -25,7 +25,7 @@ router.get("/:productId", verifyJwt, getProductsById);
 router.get('/barcode/:barcode', verifyJwt, getProductByBarCode);
 router.put("/update/:productId", verifyJwt, upload.fields([{
     name: "image"
-}]), validateBody(updateProductSchema), updateProductById);
+}]), updateProductById);
 router.delete("/delete/:productId", verifyJwt, deleteProductById);
 router.post("/make-offer/:productId", verifyJwt, makeOffer);
 
