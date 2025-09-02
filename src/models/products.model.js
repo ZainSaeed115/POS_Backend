@@ -19,6 +19,10 @@ const productSchema = new mongoose.Schema({
     ref: "Category",
     required: true
   },
+  supplier:{
+      type: mongoose.Types.ObjectId,
+      ref:"Supplier"
+  },
   brand: { type: String, trim: true },
   costPrice: { type: Number, required: true, min: 0 },
   salesPrice: { type: Number, required: true, min: 0 },
